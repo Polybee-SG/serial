@@ -32,3 +32,6 @@ doc/html
 ipch
 Debug
 Release
+cmake-build-debug/
+install/
+log/

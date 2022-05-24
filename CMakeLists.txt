@@ -1,29 +1,69 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.5)
 project(serial)
 
-# Find catkin
-find_package(catkin REQUIRED)
+#---- Enable C++14 ----
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Update the policy setting to avoid an error when loading the ament_cmake package
+# at the current cmake version level
+if(POLICY CMP0057)
+    cmake_policy(SET CMP0057 NEW)
+endif()
 
 if(APPLE)
     find_library(IOKIT_LIBRARY IOKit)
     find_library(FOUNDATION_LIBRARY Foundation)
 endif()
 
-if(UNIX AND NOT APPLE)
-    # If Linux, add rt and pthread
-    set(rt_LIBRARIES rt)
-    set(pthread_LIBRARIES pthread)
-    catkin_package(
-        LIBRARIES ${PROJECT_NAME}
-        INCLUDE_DIRS include
-        DEPENDS rt pthread
-    )
-else()
-    # Otherwise normal call
-    catkin_package(
-        LIBRARIES ${PROJECT_NAME}
-        INCLUDE_DIRS include
-    )
+find_package(ament_cmake QUIET)
+
+if ( ament_cmake_FOUND )
+
+    message(STATUS "------------------------------------------")
+    message(STATUS "serial is being built using AMENT.")
+    message(STATUS "------------------------------------------")
+
+    ament_export_include_directories(include)
+    ament_export_libraries(${PROJECT_NAME})
+    ament_package()
+
+    set( SERIAL_LIB_DESTINATION   lib )
+    set( SERIAL_INC_DESTINATION   include )
+    set( SERIAL_BIN_DESTINATION   bin )
+
+elseif( CATKIN_DEVEL_PREFIX OR CATKIN_BUILD_BINARY_PACKAGE)
+
+    set(catkin_FOUND 1)
+    add_definitions( -DUSING_ROS )
+
+    message(STATUS "------------------------------------------")
+    message(STATUS "serial is being built using CATKIN.")
+    message(STATUS "------------------------------------------")
+
+    find_package(catkin REQUIRED)
+
+    if(UNIX AND NOT APPLE)
+        # If Linux, add rt and pthread
+        set(rt_LIBRARIES rt)
+        set(pthread_LIBRARIES pthread)
+        catkin_package(
+          LIBRARIES ${PROJECT_NAME}
+          INCLUDE_DIRS include
+          DEPENDS rt pthread
+        )
+    else()
+        # Otherwise normal call
+        catkin_package(
+          LIBRARIES ${PROJECT_NAME}
+          INCLUDE_DIRS include
+        )
+    endif()
+
+    set( SERIAL_LIB_DESTINATION   ${CATKIN_PACKAGE_LIB_DESTINATION} )
+    set( SERIAL_INC_DESTINATION   ${CATKIN_GLOBAL_INCLUDE_DESTINATION} )
+    set( SERIAL_BIN_DESTINATION   ${CATKIN_GLOBAL_BIN_DESTINATION} )
+
 endif()
 
 ## Sources
@@ -65,17 +105,19 @@ target_link_libraries(serial_example ${PROJECT_NAME})
 include_directories(include)
 
 ## Install executable
-install(TARGETS ${PROJECT_NAME}
-    ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-    RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
-)
+INSTALL(TARGETS ${PROJECT_NAME}
+  ARCHIVE DESTINATION ${SERIAL_LIB_DESTINATION}
+  LIBRARY DESTINATION ${SERIAL_LIB_DESTINATION}
+  RUNTIME DESTINATION ${SERIAL_BIN_DESTINATION}
+  )
 
 ## Install headers
-install(FILES include/serial/serial.h include/serial/v8stdint.h
-  DESTINATION ${CATKIN_GLOBAL_INCLUDE_DESTINATION}/serial)
+INSTALL(FILES include/serial/serial.h include/serial/v8stdint.h
+  DESTINATION ${SERIAL_INC_DESTINATION}/serial)
 
 ## Tests
-if(CATKIN_ENABLE_TESTING)
-    add_subdirectory(tests)
+if(catkin_FOUND)
+    if (CATKIN_ENABLE_TESTING)
+        add_subdirectory(tests)
+    endif()
 endif()
